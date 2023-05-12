@@ -45,7 +45,7 @@ function startPrompt() {
             viewAllDepartments();
             break;
         case 'Add Departments':
-            addDepartments();
+            addDepartment();
             break;
         default:
             db.end();
@@ -70,6 +70,23 @@ viewAllEmployees = () => {
 };
 
 function addEmployee() {
+    db.query("SELECT id, title FROM role", (err, res) => {
+        if (err) {
+            console.error(err);
+            return;
+        }
+        const roles = res.map(({ id, title }) => ({name: title, value: id,}));
+
+        db.query(`SELECT id, CONCAT(first_name, " ", last_name) AS name FROM employee`, (err, res) => {
+            if (err) {
+                console.error(err);
+                return;
+            }
+
+            const managers = res.map(({ id, name }) => ({ name, value: id, }));
+        })
+
+    })
     inquirer
     .prompt([
         {
@@ -91,23 +108,27 @@ function addEmployee() {
             type: 'input',
             message: "Enter the employee's manager id",
             name: 'addEmployeeManager'
-        }
+        },
     ])
-    .then(function (res) {
-        const firstName = res.firstName;
-        const lastName = res.lastName;
-        const employeeRoleID = res.addEmployeeRole;
-        const employeeManagerID = res.addEmployeeManager;
-        const query = `INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES ("${firstName}", "${lastName}", "${employeeRoleID}", "${employeeManagerID}")`;
-        db.query(query, function (err, res) {
+    .then((response) => {
+        const { firstName, lastName, roleId, managerId} = response;
+        const query = `INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)`;
+        db.query(query, [firstName, lastName, roleId, managerId], (err, res) => {
             if (err) {
-                throw err;
+                console.error(err);
+                return;
             }
-            console.table(res);
-            startPrompt();
-        });
-    });
-}
+            db.query("SELECT * FROM employee", (err, newEmployee) => {
+                if (err) {
+                    console.error(err);
+                    return;
+                }
+                console.table(newEmployee);
+                startPrompt();
+            })
+        })    
+});
+};
 
 function updateEmployeeRole() {
     inquirer
@@ -187,7 +208,7 @@ function viewAllDepartments() {
     });
 }
 
-function addDept() {
+function addDepartment() {
     inquirer
     .prompt({
         type: 'input',
@@ -201,7 +222,7 @@ function addDept() {
             if (err) {
                 throw err;
             }
-            console.tables(res);
+            console.table(res);
             startPrompt();
         });
     });
